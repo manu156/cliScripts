@@ -1,0 +1,37 @@
+#!/bin/bash
+set -eo pipefail
+
+TARGET=${DL_TARGET:-.}
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "USAGE: frsync host [dir [target]]"
+    exit
+fi
+
+if [[ "$1" != "" ]]; then
+    HOST="$1"
+
+    if [[ "$2" != "" ]]; then
+        DIR="$2"
+    else
+        USERNAME=${HOST%%@*}
+        DIR="/home/$USERNAME"
+    fi
+
+    if [[ "$3" != "" ]]; then
+        TARGET="$3"
+    fi
+fi
+
+
+if [[ -z "$HOST" || -z "$DIR" ]]; then
+    echo "Error: Both host and dir must be provided"
+    exit 1
+fi
+
+REMOTE="$HOST:$DIR/"
+
+rsync -a --exclude="/*/*/" "$REMOTE" \
+    | ruby -ne 'puts $_.split(/\s+/, 5).last' \
+    | fzf -m --height 70% \
+    | rsync -avP --no-relative --files-from - "$REMOTE" "$TARGET"
